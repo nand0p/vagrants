@@ -1,0 +1,45 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+  config.vm.define "centos7" do |centos7|
+    centos7.vm.box = "centos/7"
+    centos7.vm.box_check_update = true
+    centos7.vm.provider "virtualbox" do |vb|
+      vb.gui = false
+      vb.memory = "512"
+    end
+    config.vm.provision "chef_apply" do |chef|
+      chef.recipe = <<-RECIPE
+        package "epel-release"
+        package "python-devel"
+        package "python-setuptools"
+        package "libselinux-python"
+        package "postgresql-devel"
+        package "libxml2-devel"
+        package "libxslt-devel"
+        package "mailx"
+        package "openldap-devel"
+        package "openldap-clients"
+        package "libffi-devel"
+        package "openvpn"
+        package "openssl-devel"
+        package "perl-Digest-SHA"
+        package "python-pip"
+      RECIPE
+    end
+    centos7.vm.provision "shell", privileged: false, inline: <<-SHELL
+      sudo yum -y update
+      sudo pip install -U pip
+      sudo pip install -U ansible==2.1
+      sudo pip install -U awscli
+#      sudo groupadd nixbld
+#      sudo usermod -aG nixbld vagrant
+#      curl https://nixos.org/nix/install | sh
+#      echo 'source ~/.nix-profile/etc/profile.d/nix.sh' >> /home/vagrant/.bashrc
+#      echo 'export NIXPKGS=/home/vagrant/sync/nixpkgs' >> /home/vagrant/.bashrc
+      sudo rm -rf /home/vagrant/sync/nixpkgs/result
+      cd sync/nixpkgs && nix-build -A buildbot && nix-build -A buildbot-worker && nix-build -A buildbot-ui && nix-build -A buildbot-full
+    SHELL
+  end
+end
